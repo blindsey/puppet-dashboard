@@ -26,3 +26,6 @@ config.action_view.cache_template_loading            = true
 
 # Enable threaded mode
 # config.threadsafe!
+
+require 'active_support/cache/dalli_store23'
+config.cache_store = :dalli_store
