@@ -145,6 +145,7 @@ ActiveRecord::Schema.define(:version => 20130402230447) do
     t.string   "configuration_version"
   end
 
+  add_index "reports", ["node_id", "kind", "time"], :name => "index_reports_node_id_and_kind_and_time"
   add_index "reports", ["node_id"], :name => "index_reports_on_node_id"
   add_index "reports", ["time", "node_id", "status"], :name => "index_reports_on_time_and_node_id_and_status"
 
@@ -193,6 +194,7 @@ ActiveRecord::Schema.define(:version => 20130402230447) do
     t.datetime "updated_at"
   end
 
+  add_index "timeline_events", ["secondary_subject_id", "secondary_subject_type"], :name => "index_timeline_events_on_secondary"
   add_index "timeline_events", ["subject_id", "subject_type"], :name => "index_timeline_events_on_subject_id_and_subject_type"
 
 end
