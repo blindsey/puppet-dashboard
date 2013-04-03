@@ -23,15 +23,6 @@ class Status
     utc_date_boundaries     = get_utc_boundaries_ending(last_day, limit + 1)
     newest_accepatable_data = utc_date_boundaries.first
 
-    boundary_groupings = "CASE\n"
-    utc_date_boundaries.each do |boundary|
-      # We use the '%Y-%m-%d %H:%M:%S %z' strftime to get something parse-able
-      # by Time.zone.parse and lexically sortable.
-      boundary_groupings << "WHEN time >= '#{boundary.utc.to_s(:db)}' THEN '#{boundary.strftime("%Y-%m-%d %H:%M:%S %z")}'\n"
-    end
-    boundary_groupings << "ELSE null\n"
-    boundary_groupings << "END"
-
     sql = <<-SQL
       SELECT
         COUNT(*)                                            as total,
@@ -39,7 +30,7 @@ class Status
         SUM(CASE status when 'changed' then 1 else 0 end)   as changed,
         SUM(CASE status when 'pending' then 1 else 0 end)   as pending,
         SUM(CASE status when 'failed' then 1 else 0 end)    as failed,
-        #{boundary_groupings}                               as start
+        DATE(time)                                          as start
       FROM reports
     SQL
 
@@ -48,8 +39,7 @@ class Status
     sql << "AND time >= '#{utc_date_boundaries.last.utc.to_s(:db)}'\n"
     sql << "AND node_id = #{options[:node].id}\n"                      if options[:node]
     sql << "AND node_id IN (#{options[:nodes].map(&:id).join(',')})\n" if options[:nodes].present?
-    sql << "GROUP BY start\n"
-    sql << "ORDER BY start ASC\n"
+    sql << "GROUP BY DATE(time)\n"
     sql << "LIMIT #{limit}\n"
 
     return execute(sql)
