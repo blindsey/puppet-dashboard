@@ -57,3 +57,4 @@ Rails::Initializer.run do |config|
 end
 
 ActiveRecord::Base.include_root_in_json = false
+ActiveRecord::Base.colorize_logging = false
