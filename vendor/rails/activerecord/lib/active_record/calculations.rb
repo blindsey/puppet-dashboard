@@ -200,7 +200,7 @@ module ActiveRecord
           joins = ""
           add_joins!(joins, options[:joins], scope)
 
-          if merged_includes.any?
+          if operation != 'count' && merged_includes.any?
             join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(self, merged_includes, joins)
             sql << join_dependency.join_associations.collect{|join| join.association_join }.join
           end
