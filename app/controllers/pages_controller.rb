@@ -3,6 +3,7 @@ class PagesController < ApplicationController
 
   def home
     @all_nodes = Node.unhidden.by_report_date
+    @all_nodes.proxy_options[:include] = { :last_apply_report => :metrics } # preload
 
     @unreported_nodes         = @all_nodes.unreported
     @unresponsive_nodes       = @all_nodes.unresponsive
