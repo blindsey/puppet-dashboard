@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20130402230447) do
+ActiveRecord::Schema.define(:version => 20130409191541) do
 
   create_table "delayed_job_failures", :force => true do |t|
     t.string   "summary"
@@ -123,9 +123,9 @@ ActiveRecord::Schema.define(:version => 20130402230447) do
   end
 
   create_table "report_logs", :force => true do |t|
-    t.integer  "report_id", :null => false
+    t.integer  "report_id",                     :null => false
     t.string   "level"
-    t.text     "message"
+    t.text     "message",   :limit => 16777215
     t.text     "source"
     t.text     "tags"
     t.datetime "time"
@@ -145,7 +145,6 @@ ActiveRecord::Schema.define(:version => 20130402230447) do
     t.string   "configuration_version"
   end
 
-  add_index "reports", ["node_id", "kind", "time"], :name => "index_reports_node_id_and_kind_and_time"
   add_index "reports", ["node_id"], :name => "index_reports_on_node_id"
   add_index "reports", ["time", "node_id", "status"], :name => "index_reports_on_time_and_node_id_and_status"
 
@@ -194,7 +193,6 @@ ActiveRecord::Schema.define(:version => 20130402230447) do
     t.datetime "updated_at"
   end
 
-  add_index "timeline_events", ["secondary_subject_id", "secondary_subject_type"], :name => "index_timeline_events_on_secondary"
   add_index "timeline_events", ["subject_id", "subject_type"], :name => "index_timeline_events_on_subject_id_and_subject_type"
 
 end
