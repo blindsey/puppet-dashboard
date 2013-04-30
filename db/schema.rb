@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20130409191541) do
+ActiveRecord::Schema.define(:version => 20130430003544) do
 
   create_table "delayed_job_failures", :force => true do |t|
     t.string   "summary"
@@ -33,6 +33,7 @@ ActiveRecord::Schema.define(:version => 20130409191541) do
     t.datetime "updated_at"
   end
 
+  add_index "delayed_jobs", ["failed_at", "run_at", "locked_at", "locked_by"], :name => "index_delayed_jobs_multi"
   add_index "delayed_jobs", ["priority", "run_at"], :name => "delayed_jobs_priority"
 
   create_table "metrics", :force => true do |t|
@@ -42,7 +43,7 @@ ActiveRecord::Schema.define(:version => 20130409191541) do
     t.decimal "value",     :precision => 12, :scale => 6
   end
 
-  add_index "metrics", ["report_id", "category", "name"], :name => "index_metrics_on_report_id_and_category_and_name"
+  add_index "metrics", ["report_id", "category", "name"], :name => "index_metrics_multi"
   add_index "metrics", ["report_id"], :name => "index_metrics_on_report_id"
 
   create_table "node_class_memberships", :force => true do |t|
@@ -51,6 +52,8 @@ ActiveRecord::Schema.define(:version => 20130409191541) do
     t.datetime "created_at"
     t.datetime "updated_at"
   end
+
+  add_index "node_class_memberships", ["node_id"], :name => "index_node_class_memberships_on_node_id"
 
   create_table "node_classes", :force => true do |t|
     t.string   "name"
@@ -65,12 +68,17 @@ ActiveRecord::Schema.define(:version => 20130409191541) do
     t.datetime "updated_at"
   end
 
+  add_index "node_group_class_memberships", ["node_group_id"], :name => "index_node_group_class_memberships_on_node_group_id"
+
   create_table "node_group_edges", :force => true do |t|
     t.integer  "to_id"
     t.integer  "from_id"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
+
+  add_index "node_group_edges", ["from_id"], :name => "index_node_group_edges_on_from_id"
+  add_index "node_group_edges", ["to_id"], :name => "index_node_group_edges_on_to_id"
 
   create_table "node_group_memberships", :force => true do |t|
     t.integer  "node_id"
@@ -121,6 +129,8 @@ ActiveRecord::Schema.define(:version => 20130409191541) do
     t.datetime "created_at"
     t.datetime "updated_at"
   end
+
+  add_index "parameters", ["parameterable_id", "parameterable_type", "key"], :name => "index_parameters_multi"
 
   create_table "report_logs", :force => true do |t|
     t.integer  "report_id",                     :null => false
@@ -193,6 +203,7 @@ ActiveRecord::Schema.define(:version => 20130409191541) do
     t.datetime "updated_at"
   end
 
-  add_index "timeline_events", ["subject_id", "subject_type"], :name => "index_timeline_events_on_subject_id_and_subject_type"
+  add_index "timeline_events", ["secondary_subject_id", "secondary_subject_type"], :name => "index_timeline_events_secondary"
+  add_index "timeline_events", ["subject_id", "subject_type"], :name => "index_timeline_events_primary"
 
 end
