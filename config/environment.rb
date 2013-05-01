@@ -16,7 +16,7 @@ Rails::Initializer.run do |config|
   config.gem 'haml'
   config.gem 'sass'
   config.gem 'will_paginate'
-  config.gem 'daemons', :version => '1.0.10'
+  config.gem 'daemons', :version => '1.1.9'
   config.gem 'dalli'
 
   # Settings in config/environments/* take precedence over those specified here.

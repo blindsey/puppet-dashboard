@@ -12,6 +12,7 @@ require 'daemons/application'
 require 'daemons/application_group'
 require 'daemons/controller'
 
+require 'timeout'
 
 # All functions and classes that Daemons provides reside in this module.
 #
@@ -26,7 +27,7 @@ require 'daemons/controller'
 # 2.  <tt>Daemons.run_proc(app_name, options) { (...) }</tt>:
 #     This is used in wrapper-scripts that are supposed to control a proc. 
 #     Control is completely passed to the daemons library.
-#     Such wrapper script need to be invoked with command line options like 'start' or 'stop'
+#     Such wrapper scripts need to be invoked with command line options like 'start' or 'stop'
 #     to do anything useful.
 #
 # 3.  <tt>Daemons.call(options) { block }</tt>:
@@ -65,7 +66,7 @@ require 'daemons/controller'
 #
 module Daemons
 
-  VERSION = "1.0.10"
+  VERSION = "1.1.9"
   
   require 'daemons/daemonize'
   
@@ -80,7 +81,9 @@ module Daemons
   #             Please note that Daemons runs this script with <tt>load <script></tt>.
   #             Also note that Daemons cannot detect the directory in which the controlling
   #             script resides, so this has to be either an absolute path or you have to run
-  #             the controlling script from the appropriate directory.
+  #             the controlling script from the appropriate directory. Your script name should not
+  #             end with _monitor because that name is reserved for a monitor process which is 
+  #             there to restart your daemon if it crashes.
   #
   # +options+:: A hash that may contain one or more of the options listed below
   #
@@ -96,7 +99,7 @@ module Daemons
   #                       If not given, ARGV (the parameters given to the Ruby process) will be used.
   # <tt>:dir_mode</tt>::  Either <tt>:script</tt> (the directory for writing the pid files to 
   #                       given by <tt>:dir</tt> is interpreted relative
-  #                       to the script location given by +script+) or <tt>:normal</tt> (the directory given by 
+  #                       to the script location given by +script+, the default) or <tt>:normal</tt> (the directory given by 
   #                       <tt>:dir</tt> is interpreted as a (absolute or relative) path) or <tt>:system</tt> 
   #                       (<tt>/var/run</tt> is used as the pid file directory)
   #
@@ -106,14 +109,19 @@ module Daemons
   # <tt>:ontop</tt>::     When given (i.e. set to true), stay on top, i.e. do not daemonize the application 
   #                       (but the pid-file and other things are written as usual)
   # <tt>:mode</tt>::      <tt>:load</tt> Load the script with <tt>Kernel.load</tt>;
+  #                       note that :stop_proc only works for the :load (and :proc) mode.
   #                       <tt>:exec</tt> Execute the script file with <tt>Kernel.exec</tt>
   # <tt>:backtrace</tt>:: Write a backtrace of the last exceptions to the file '[app_name].log' in the 
   #                       pid-file directory if the application exits due to an uncaught exception
   # <tt>:monitor</tt>::   Monitor the programs and restart crashed instances
+  # <tt>:log_dir</tt>::   A specific directory to put the log files into (when not given, resort to the default
+  #                       location as derived from the :dir_mode and :dir options
   # <tt>:log_output</tt>:: When given (i.e. set to true), redirect both STDOUT and STDERR to a logfile named '[app_name].output' in the pid-file directory
   # <tt>:keep_pid_files</tt>:: When given do not delete lingering pid-files (files for which the process is no longer running).
   # <tt>:hard_exit</tt>:: When given use exit! to end a daemons instead of exit (this will for example
   #                       not call at_exit handlers).
+  # <tt>:stop_proc</tt>:: A proc that will be called when the daemonized process receives a request to stop (works only for :load and :proc mode)
+  #
   # -----
   # 
   # === Example:
@@ -158,6 +166,7 @@ module Daemons
   # +options+::   A hash that may contain one or more of the options listed in the documentation for Daemons.run
   #
   # A block must be given to this function. The block will be used as the :proc entry in the options hash.
+  #
   # -----
   # 
   # === Example:
@@ -179,7 +188,7 @@ module Daemons
     # we do not have a script location so the the :script :dir_mode cannot be used, change it to :normal
     if [nil, :script].include? options[:dir_mode]
       options[:dir_mode] = :normal
-      options[:dir] = File.expand_path('.')
+      options[:dir] ||= File.expand_path('.')
     end
     
     @controller = Controller.new(options, options[:ARGV] || ARGV)
@@ -197,6 +206,8 @@ module Daemons
   # Execute the block in a new daemon. <tt>Daemons.call</tt> will return immediately
   # after spawning the daemon with the new Application object as a return value.
   #
+  # +app_name+::  The name of the application.
+  #
   # +options+:: A hash that may contain one or more of the options listed below
   #
   # +block+::   The block to call in the daemon.
@@ -211,6 +222,7 @@ module Daemons
   # 
   # === Example:
   #   options = {
+  #     :app_name   => "myproc",
   #     :backtrace  => true,
   #     :monitor    => true,
   #     :ontop      => true
@@ -232,7 +244,9 @@ module Daemons
     options[:proc] = block
     options[:mode] = :proc
     
-    @group ||= ApplicationGroup.new('proc', options)
+    options[:app_name] ||= 'proc'
+    
+    @group ||= ApplicationGroup.new(options[:app_name], options)
     
     new_app = @group.new_application(options)
     new_app.start
@@ -250,12 +264,27 @@ module Daemons
   # <tt>:ontop</tt>::     When given, stay on top, i.e. do not daemonize the application 
   # <tt>:backtrace</tt>:: Write a backtrace of the last exceptions to the file '[app_name].log' in the 
   #                       pid-file directory if the application exits due to an uncaught exception
+  # <tt>:app_name</tt>::  The name of the application. This will be
+  #                       used to contruct the name of the pid files
+  #                       and log files. Defaults to the basename of
+  #                       the script.
+  # <tt>:dir_mode</tt>::  Either <tt>:script</tt> (the directory for writing files to 
+  #                       given by <tt>:dir</tt> is interpreted relative
+  #                       to the script location given by +script+, the default) or <tt>:normal</tt> (the directory given by 
+  #                       <tt>:dir</tt> is interpreted as a (absolute or relative) path) or <tt>:system</tt> 
+  #                       (<tt>/var/run</tt> is used as the file directory)
+  #
+  # <tt>:dir</tt>::       Used in combination with <tt>:dir_mode</tt> (description above)
+  # <tt>:log_dir</tt>::   A specific directory to put the log files into (when not given, resort to the default
+  #                       location as derived from the :dir_mode and :dir options
+  # <tt>:log_output</tt>:: When given (i.e. set to true), redirect both STDOUT and STDERR to a logfile named '[app_name].output' in the pid-file directory
   # -----
   # 
   # === Example:
   #   options = {
   #     :backtrace  => true,
-  #     :ontop      => true
+  #     :ontop      => true,
+  #     :log_output => true
   #   }
   #
   #   Daemons.daemonize(options)
@@ -263,11 +292,14 @@ module Daemons
   #   # Server loop:
   #   loop {
   #     conn = accept_conn()
+  #     puts "some text which goes to the output logfile"
   #     serve(conn)
   #   }
   #
   def daemonize(options = {})
-    @group ||= ApplicationGroup.new('self', options)
+    options[:script] ||= File.basename(__FILE__)
+    
+    @group ||= ApplicationGroup.new(options[:app_name] || options[:script], options)
     
     @group.new_application(:mode => :none).start
   end
