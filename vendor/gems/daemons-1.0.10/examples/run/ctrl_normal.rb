@@ -8,9 +8,5 @@ end
 
 require 'daemons'
 
-options = {
-  #:force_kill_waittime => 40
-  #:force_kill_waittime => -1    # do not wait before killing -9
-}
 
-Daemons.run(File.join(File.dirname(__FILE__), 'myserver_slowstop.rb'), options)
+Daemons.run(File.join(File.dirname(__FILE__), 'myserver.rb'))
